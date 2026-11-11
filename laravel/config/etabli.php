@@ -8,6 +8,9 @@ return [
     'code_dir' => env('ETABLI_CODE_DIR', storage_path('code')),
 
     // Durée max d'un run claude -p, en secondes
+    // Propriétaire GitHub par défaut quand /tache reçoit un nom de repo sans owner
+    'github_owner' => env('ETABLI_GITHUB_OWNER', 'DeGraciaMathieu'),
+
     'claude_timeout' => (int) env('ETABLI_CLAUDE_TIMEOUT', 3600),
 
     'max_turns' => (int) env('ETABLI_MAX_TURNS', 60),

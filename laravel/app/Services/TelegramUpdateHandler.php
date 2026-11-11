@@ -4,13 +4,16 @@ namespace App\Services;
 
 use App\Enums\TaskStatus;
 use App\Jobs\ResumeClaudeTask;
+use App\Jobs\RunClaudeTask;
 use App\Models\Question;
 use App\Models\Run;
 use App\Models\Task;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class TelegramUpdateHandler
 {
-    public function __construct(private Telegram $telegram) {}
+    public function __construct(private Telegram $telegram, private Projects $projects) {}
 
     public function handle(array $update): void
     {
@@ -21,7 +24,7 @@ class TelegramUpdateHandler
         }
     }
 
-    // Un bouton d'option : callback_data = "q:<question>:<index de l'option>"
+    // Boutons : "q:<question>:<index de l'option>" ou "np:<create|cancel>:<clé de la demande>"
     private function handleButton(array $callback): void
     {
         if (! $this->fromMathieu($callback['from'])) {
@@ -29,6 +32,12 @@ class TelegramUpdateHandler
         }
 
         $this->telegram->answerCallbackQuery($callback['id']);
+
+        if (preg_match('/^np:(create|cancel):(\w+)$/', $callback['data'] ?? '', $matches)) {
+            $this->handleNewProjectButton($matches[1], $matches[2], $callback['message']['message_id']);
+
+            return;
+        }
 
         if (! preg_match('/^q:(\d+):(\d+)$/', $callback['data'] ?? '', $matches)) {
             return;
@@ -54,6 +63,12 @@ class TelegramUpdateHandler
         }
 
         $text = $message['text'];
+
+        if (preg_match('#^/tache(@\w+)?(\s|$)#', $text)) {
+            $this->handleNewTask($text);
+
+            return;
+        }
 
         if ($replyTo = $message['reply_to_message']['message_id'] ?? null) {
             $this->handleReply((string) $replyTo, $text);
@@ -91,6 +106,76 @@ class TelegramUpdateHandler
         }
 
         $this->telegram->sendMessage('Je ne retrouve ni question ni tâche liée à ce message.');
+    }
+
+    // /tache <projet> <consigne> : projet déjà cloné, sinon cloné depuis GitHub, sinon créé après confirmation
+    private function handleNewTask(string $text): void
+    {
+        if (! preg_match('#^/tache(?:@\w+)?\s+(\S+)\s+(.+)$#s', $text, $matches)) {
+            $this->telegram->sendMessage("Usage : /tache <projet> <consigne>\nLe projet est un dossier de ~/code, un repo GitHub (nom ou owner/nom), ou un nouveau projet.");
+
+            return;
+        }
+
+        [, $name, $prompt] = $matches;
+
+        if (! $this->projects->isValidName($name)) {
+            $this->telegram->sendMessage("Nom de projet invalide : {$name}. Lettres, chiffres, . _ - et un owner/ facultatif.");
+
+            return;
+        }
+
+        if ($this->projects->isCloned($name) || $this->projects->cloneFromGitHub($name)) {
+            $this->startTask($name, trim($prompt));
+
+            return;
+        }
+
+        // La consigne attend la confirmation : une faute de frappe ne doit pas créer de projet
+        $key = Str::random(12);
+        Cache::put("telegram.new_project.{$key}", ['name' => $name, 'prompt' => trim($prompt)], now()->addDay());
+
+        $this->telegram->sendMessage(
+            "Le projet {$name} n'est ni sur l'EC2 ni sur GitHub (ou ton token n'y a pas accès). Créer un nouveau projet local ?",
+            ['inline_keyboard' => [
+                [['text' => "Créer le projet {$name}", 'callback_data' => "np:create:{$key}"]],
+                [['text' => 'Annuler', 'callback_data' => "np:cancel:{$key}"]],
+            ]],
+        );
+    }
+
+    private function handleNewProjectButton(string $action, string $key, int $messageId): void
+    {
+        $pending = Cache::pull("telegram.new_project.{$key}");
+
+        if (! $pending) {
+            $this->telegram->sendMessage('Cette demande a expiré ou a déjà été traitée.');
+
+            return;
+        }
+
+        $this->telegram->removeButtons($messageId);
+
+        if ($action === 'cancel') {
+            $this->telegram->sendMessage('Annulé, aucun projet créé.');
+
+            return;
+        }
+
+        if (! $this->projects->isCloned($pending['name'])) {
+            $this->projects->create($pending['name']);
+        }
+
+        $this->startTask($pending['name'], $pending['prompt']);
+    }
+
+    private function startTask(string $name, string $prompt): void
+    {
+        $task = Task::create(['repo' => $this->projects->path($name), 'prompt' => $prompt]);
+
+        RunClaudeTask::dispatch($task);
+
+        $this->telegram->sendMessage("Tâche #{$task->id} créée sur {$name}, je la lance.");
     }
 
     private function answer(Question $question, string $answer): void
