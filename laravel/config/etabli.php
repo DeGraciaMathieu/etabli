@@ -23,4 +23,11 @@ return [
         'Bash(npm *)',
     ],
 
+    // Autorisés d'office par l'outil approve, sans demander à Mathieu : lecture seule
+    'auto_approve' => [
+        'tools' => ['Glob', 'Grep'],
+        // Début de commande Bash : la commande elle-même, ou suivie d'arguments
+        'bash' => ['ls', 'cat', 'head', 'tail', 'wc', 'find', 'grep', 'rg', 'pwd', 'php -l'],
+    ],
+
 ];

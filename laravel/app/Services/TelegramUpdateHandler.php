@@ -97,7 +97,35 @@ class TelegramUpdateHandler
     {
         $question->update(['answer' => $answer, 'answered_at' => now()]);
 
+        if ($question->kind === 'permission') {
+            $this->answerPermission($question, $answer);
+
+            return;
+        }
+
         $this->resume($question->task, "Réponse de Mathieu à « {$question->question} » : {$answer}");
+    }
+
+    // Autoriser ajoute la règle exacte aux allowed_tools de la tâche ; tout autre texte vaut refus
+    private function answerPermission(Question $question, string $answer): void
+    {
+        $task = $question->task;
+
+        if ($answer === 'Autoriser') {
+            $task->update(['allowed_tools' => collect($task->allowed_tools ?? config('etabli.allowed_tools'))
+                ->push($question->question)
+                ->unique()
+                ->values()
+                ->all()]);
+
+            $this->resume($task, "Mathieu autorise {$question->question}. Tu peux réessayer.");
+
+            return;
+        }
+
+        $reason = $answer === 'Refuser' ? '' : " Il précise : {$answer}.";
+
+        $this->resume($task, "Mathieu refuse {$question->question}.{$reason} Continue sans, ou arrête-toi si c'est impossible.");
     }
 
     private function resume(Task $task, string $message): void

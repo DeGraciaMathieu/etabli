@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\ApproveTool;
 use App\Mcp\Tools\AskMathieuTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
@@ -15,5 +16,6 @@ class EtabliServer extends Server
 {
     protected array $tools = [
         AskMathieuTool::class,
+        ApproveTool::class,
     ];
 }

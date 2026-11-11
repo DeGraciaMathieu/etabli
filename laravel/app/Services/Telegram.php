@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Question;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class Telegram
 {
@@ -17,6 +20,27 @@ class Telegram
         ]));
 
         return $response['message_id'];
+    }
+
+    // Boutons inline pour les options, sinon force_reply pour une réponse libre
+    public function sendQuestion(Question $question): void
+    {
+        $text = $question->kind === 'permission'
+            ? "Tâche #{$question->task_id} veut utiliser : {$question->question}"
+            : "Tâche #{$question->task_id} : {$question->question}";
+
+        $markup = $question->options
+            ? ['inline_keyboard' => collect($question->options)
+                ->map(fn (string $option, int $i) => [['text' => $option, 'callback_data' => "q:{$question->id}:{$i}"]])
+                ->all()]
+            : ['force_reply' => true];
+
+        try {
+            $question->update(['telegram_message_id' => $this->sendMessage($text, $markup)]);
+        } catch (Throwable $e) {
+            // La question reste en base : la tâche passera quand même en attente
+            Log::error("Question {$question->id} non envoyée sur Telegram", ['error' => $e->getMessage()]);
+        }
     }
 
     // Long polling : Telegram garde la requête ouverte jusqu'à $timeout secondes s'il n'a rien

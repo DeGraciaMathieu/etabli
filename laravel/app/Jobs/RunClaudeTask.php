@@ -62,7 +62,7 @@ class RunClaudeTask implements ShouldQueue
 
         $this->task->update(['status' => $status]);
 
-        if ($status !== TaskStatus::WaitingInput) {
+        if (! in_array($status, [TaskStatus::WaitingInput, TaskStatus::WaitingPermission], true)) {
             $this->notifyResult($run, $status, $exitCode, $result);
         }
     }
@@ -85,8 +85,10 @@ class RunClaudeTask implements ShouldQueue
     // Une question sans réponse l'emporte : la tâche attend Mathieu, même si le run s'est mal fini
     private function finalStatus(?int $exitCode, array $result): TaskStatus
     {
-        if ($this->task->questions()->pending()->exists()) {
-            return TaskStatus::WaitingInput;
+        $pending = $this->task->questions()->pending()->latest('id')->first();
+
+        if ($pending) {
+            return $pending->kind === 'permission' ? TaskStatus::WaitingPermission : TaskStatus::WaitingInput;
         }
 
         $succeeded = $exitCode === 0 && ($result['subtype'] ?? null) === 'success';
@@ -195,6 +197,8 @@ class RunClaudeTask implements ShouldQueue
             '--mcp-config', $mcpConfig,
             '--strict-mcp-config',
             '--allowedTools', implode(',', $this->task->allowed_tools ?? config('etabli.allowed_tools')),
+            // Tout outil hors des allowed_tools passe par approve : autorisé d'office ou demandé à Mathieu
+            '--permission-prompt-tool', 'mcp__etabli__approve',
             '--append-system-prompt', File::get(base_path('prompts/headless.md')),
             '--max-turns', (string) config('etabli.max_turns'),
         ];
