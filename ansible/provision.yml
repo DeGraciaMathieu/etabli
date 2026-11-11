@@ -165,7 +165,7 @@
       vars:
         budget:
           BudgetName: "{{ etabli_name }}"
-          BudgetLimit: { Amount: "{{ budget_limit_usd }}", Unit: USD }
+          BudgetLimit: { Amount: "{{ budget_limit_usd | string }}", Unit: USD }
           TimeUnit: MONTHLY
           BudgetType: COST
         subscribers: [{ SubscriptionType: EMAIL, Address: "{{ budget_email }}" }]
