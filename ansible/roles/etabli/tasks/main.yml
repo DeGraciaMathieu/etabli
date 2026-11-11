@@ -1,6 +1,6 @@
-- name: Dossier de l'app
+- name: Dossier du repo
   ansible.builtin.file:
-    path: "{{ etabli_app_dir }}"
+    path: "{{ etabli_repo_dir }}"
     state: directory
     owner: "{{ etabli_user }}"
     group: "{{ etabli_user }}"
@@ -9,7 +9,7 @@
 - name: Code de l'app
   ansible.builtin.git:
     repo: "{{ etabli_repo }}"
-    dest: "{{ etabli_app_dir }}"
+    dest: "{{ etabli_repo_dir }}"
     version: "{{ etabli_branch }}"
   become_user: "{{ etabli_user }}"
   notify: Redémarrer Établi

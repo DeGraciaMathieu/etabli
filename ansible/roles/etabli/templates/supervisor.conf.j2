@@ -1,5 +1,6 @@
 [group:etabli]
-programs=telegram-poll,queue-claude,queue-default
+programs={{ 'telegram-poll,' if etabli_telegram_enabled else '' }}queue-claude,queue-default
+{% if etabli_telegram_enabled %}
 
 ; Le bot : interroge Telegram en boucle et dispatch les reprises
 [program:telegram-poll]
@@ -12,6 +13,7 @@ autorestart=true
 stopwaitsecs=45
 redirect_stderr=true
 stdout_logfile={{ etabli_app_dir }}/storage/logs/telegram-poll.log
+{% endif %}
 
 ; Les runs claude -p / --resume : longs, un à la fois, jamais rejoués automatiquement
 [program:queue-claude]
