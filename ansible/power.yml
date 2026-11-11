@@ -1,0 +1,96 @@
+# Allume ou éteint l'instance d'Établi depuis ton poste.
+#
+#   ansible-playbook power.yml -e power=on
+#   ansible-playbook power.yml -e power=off               # refusé si une tâche est en file ou en cours
+#   ansible-playbook power.yml -e power=off -e force=true # éteint quand même, la tâche est coupée
+#
+- name: Allumer ou éteindre l'instance d'Établi
+  # localhost implicite, donc local ; pas de « connection: local » au niveau du play,
+  # qui s'appliquerait aussi à la tâche déléguée à claude-box
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # Comme provision.yml
+    aws_profile: etabli
+    aws_region: eu-north-1
+    etabli_name: etabli
+    power: ""
+    force: false
+
+  module_defaults:
+    group/amazon.aws.aws:
+      profile: "{{ aws_profile }}"
+      region: "{{ aws_region }}"
+
+  tasks:
+    - name: Vérifier la demande
+      ansible.builtin.assert:
+        that: power in ['on', 'off']
+        fail_msg: "Précise -e power=on ou -e power=off."
+        quiet: true
+
+    - name: Instance d'Établi
+      amazon.aws.ec2_instance_info:
+        filters:
+          "tag:Name": "{{ etabli_name }}"
+          instance-state-name: [pending, running, stopping, stopped]
+      register: etabli_info
+
+    - name: Instance trouvée
+      ansible.builtin.set_fact:
+        etabli_instance_id: "{{ etabli_info.instances[0].instance_id }}"
+        etabli_state: "{{ etabli_info.instances[0].state.name }}"
+
+    # Lecture seule : tourne aussi en --check
+    - name: Tâches en file ou en cours
+      ansible.builtin.command: >-
+        sqlite3 {{ hostvars['claude-box'].etabli_app_dir }}/database/database.sqlite
+        "select '#' || id || ' (' || status || ')' from tasks where status in ('queued', 'running')"
+      delegate_to: claude-box
+      register: etabli_busy
+      changed_when: false
+      check_mode: false
+      when: power == 'off' and etabli_state == 'running'
+
+    - name: Ne pas couper une tâche
+      ansible.builtin.fail:
+        msg: >-
+          Tâches en cours : {{ etabli_busy.stdout_lines | join(', ') }}. Rien n'est éteint.
+          Relance avec -e force=true pour couper quand même.
+      when:
+        - power == 'off'
+        - etabli_busy.stdout_lines | default([]) | length > 0
+        - not force | bool
+
+    - name: Éteindre l'instance
+      amazon.aws.ec2_instance:
+        instance_ids: ["{{ etabli_instance_id }}"]
+        state: stopped
+        wait: true
+      when: power == 'off'
+
+    - name: Allumer l'instance
+      amazon.aws.ec2_instance:
+        instance_ids: ["{{ etabli_instance_id }}"]
+        state: running
+        wait: true
+      when: power == 'on'
+
+    - name: Attendre que l'agent SSM soit en ligne
+      ansible.builtin.command: >-
+        aws ssm describe-instance-information
+        --profile {{ aws_profile }} --region {{ aws_region }}
+        --filters Key=InstanceIds,Values={{ etabli_instance_id }}
+        --query "InstanceInformationList[0].PingStatus" --output text
+      register: etabli_ssm
+      until: etabli_ssm.stdout == "Online"
+      retries: 30
+      delay: 10
+      changed_when: false
+      check_mode: false
+      when: power == 'on'
+
+    - name: État
+      ansible.builtin.debug:
+        msg: "Instance {{ etabli_instance_id }} {{ 'allumée, SSM en ligne' if power == 'on' else 'éteinte' }}."
