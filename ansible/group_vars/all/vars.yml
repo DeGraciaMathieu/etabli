@@ -1,0 +1,39 @@
+etabli_user: ubuntu
+etabli_home: /home/ubuntu
+etabli_code_dir: "{{ etabli_home }}/code"           # repos et worktrees des tâches
+etabli_app_dir: /srv/etabli                         # l'app Laravel
+etabli_repo: https://github.com/TON-COMPTE/etabli.git
+etabli_branch: main
+
+timezone: Europe/Paris
+swap_size: 2G
+php_version: "8.3"                                  # PHP fourni par Ubuntu 24.04
+
+# Durée max d'un run claude (secondes). retry_after de la queue est calé dessus.
+etabli_claude_timeout: 3600
+
+# Remote Control dans tmux, lancé au boot (une fois Claude Code connecté)
+claude_rc_enabled: true
+
+# Ce que Claude peut faire sans demander (~/.claude/settings.json)
+claude_allow:
+  - "Read"
+  - "Edit"
+  - "Write"
+  - "Bash(git *)"
+  - "Bash(gh pr *)"
+  - "Bash(composer *)"
+  - "Bash(php artisan *)"
+  - "Bash(npm *)"
+  - "mcp__etabli__ask_mathieu"
+claude_deny:
+  - "Read(./.env)"
+  - "Read(**/.env)"
+  - "Bash(rm -rf *)"
+  - "Bash(sudo *)"
+
+# Secrets : définis dans vault.yml (chiffré avec ansible-vault)
+github_token: "{{ vault_github_token }}"
+telegram_bot_token: "{{ vault_telegram_bot_token }}"
+telegram_user_id: "{{ vault_telegram_user_id }}"
+etabli_app_key: "{{ vault_etabli_app_key }}"

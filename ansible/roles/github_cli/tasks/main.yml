@@ -1,0 +1,30 @@
+- name: Dépôt GitHub CLI (clé téléchargée par le module)
+  ansible.builtin.deb822_repository:
+    name: github-cli
+    types: deb
+    uris: https://cli.github.com/packages
+    suites: stable
+    components: main
+    architectures: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+    signed_by: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+
+- name: GitHub CLI
+  ansible.builtin.apt:
+    name: gh
+    state: present
+    update_cache: true
+
+- name: Statut de connexion de gh
+  ansible.builtin.command: gh auth status
+  become_user: "{{ etabli_user }}"
+  register: gh_status
+  changed_when: false
+  failed_when: false
+
+- name: Connecter gh avec le token et l'utiliser pour git
+  ansible.builtin.shell: gh auth login --with-token && gh auth setup-git
+  args:
+    stdin: "{{ github_token }}"
+  become_user: "{{ etabli_user }}"
+  when: gh_status.rc != 0
+  no_log: true

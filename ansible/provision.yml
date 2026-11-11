@@ -1,0 +1,145 @@
+# Crée l'infra AWS d'Établi depuis ton poste : key pair, rôle IAM, security group, instance.
+# Idempotent : relancer ne recrée rien. Écrit inventory.ini avec l'ID de l'instance.
+#
+#   ansible-playbook provision.yml
+#
+- name: Infra AWS d'Établi
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Le compte AWS utilisé est celui de ce profil (~/.aws/config). Le playbook
+    # s'arrête si le profil ne pointe pas vers aws_account_id.
+    aws_profile: etabli
+    aws_account_id: "123456789012"
+    aws_region: eu-north-1
+    aws_availability_zone: eu-north-1b       # eu-north-1a manquait de t4g.small
+    etabli_name: etabli
+    etabli_instance_type: t4g.small          # t4g.medium si les builds rament
+    etabli_volume_size: 30                   # Go, gp3
+    etabli_public_key: "~/.ssh/etabli.pub"   # générée avec ssh-keygen (étape 1 du README)
+    etabli_private_key: "~/.ssh/etabli"
+    # AMI Ubuntu 24.04 ARM la plus récente, publiée par Canonical dans SSM
+    ubuntu_ami_param: /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
+
+  module_defaults:
+    group/amazon.aws.aws:
+      profile: "{{ aws_profile }}"
+      region: "{{ aws_region }}"
+
+  tasks:
+    - name: Compte AWS derrière le profil
+      amazon.aws.aws_caller_info:
+      register: etabli_caller
+
+    - name: Vérifier que c'est bien le bon compte
+      ansible.builtin.assert:
+        that: etabli_caller.account == aws_account_id
+        fail_msg: >-
+          Le profil {{ aws_profile }} pointe vers le compte {{ etabli_caller.account }}
+          ({{ etabli_caller.arn }}), pas vers {{ aws_account_id }}. Rien n'a été créé.
+        success_msg: "Compte {{ etabli_caller.account }} ({{ etabli_caller.arn }})"
+
+    - name: Key pair (clé publique locale importée)
+      amazon.aws.ec2_key:
+        name: "{{ etabli_name }}"
+        key_material: "{{ lookup('ansible.builtin.file', etabli_public_key) }}"
+
+    - name: Rôle IAM de l'instance (SSM uniquement)
+      amazon.aws.iam_role:
+        name: "{{ etabli_name }}-ssm"
+        assume_role_policy_document:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: { Service: ec2.amazonaws.com }
+              Action: sts:AssumeRole
+        managed_policies:
+          - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        create_instance_profile: true
+      register: etabli_role
+
+    - name: Laisser le profil d'instance se propager dans IAM
+      ansible.builtin.pause:
+        seconds: 15
+      when: etabli_role.changed
+
+    - name: VPC par défaut
+      amazon.aws.ec2_vpc_net_info:
+        filters:
+          isDefault: "true"
+      register: etabli_vpc
+
+    - name: Subnet par défaut de la zone de disponibilité
+      amazon.aws.ec2_vpc_subnet_info:
+        filters:
+          vpc-id: "{{ etabli_vpc.vpcs[0].id }}"
+          availability-zone: "{{ aws_availability_zone }}"
+          default-for-az: "true"
+      register: etabli_subnet
+
+    - name: Security group sans aucune règle entrante
+      amazon.aws.ec2_security_group:
+        name: "{{ etabli_name }}-sg"
+        description: "Etabli - aucun entrant, tout sortant"
+        vpc_id: "{{ etabli_vpc.vpcs[0].id }}"
+        rules: []
+        # pas de rules_egress : AWS garde la règle « tout sortant » par défaut
+      register: etabli_sg
+
+    - name: AMI Ubuntu 24.04 ARM
+      ansible.builtin.set_fact:
+        etabli_ami: "{{ lookup('amazon.aws.ssm_parameter', ubuntu_ami_param, region=aws_region, profile=aws_profile) }}"
+
+    - name: Instance
+      amazon.aws.ec2_instance:
+        name: "{{ etabli_name }}"
+        instance_type: "{{ etabli_instance_type }}"
+        image_id: "{{ etabli_ami }}"
+        key_name: "{{ etabli_name }}"
+        security_group: "{{ etabli_sg.group_id }}"
+        vpc_subnet_id: "{{ etabli_subnet.subnets[0].id }}"
+        iam_instance_profile: "{{ etabli_name }}-ssm"
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: "{{ etabli_volume_size }}"
+              volume_type: gp3
+              delete_on_termination: true
+        metadata_options:
+          http_tokens: required          # IMDSv2 obligatoire
+        filters:
+          "tag:Name": "{{ etabli_name }}"
+          instance-state-name: [pending, running, stopping, stopped]
+        state: running
+        wait: true
+        tags:
+          Project: etabli
+      register: etabli_instance
+
+    - name: ID de l'instance
+      ansible.builtin.set_fact:
+        etabli_instance_id: "{{ etabli_instance.instances[0].instance_id }}"
+
+    - name: Attendre que l'agent SSM soit en ligne
+      ansible.builtin.command: >-
+        aws ssm describe-instance-information
+        --profile {{ aws_profile }} --region {{ aws_region }}
+        --filters Key=InstanceIds,Values={{ etabli_instance_id }}
+        --query "InstanceInformationList[0].PingStatus" --output text
+      register: etabli_ssm
+      until: etabli_ssm.stdout == "Online"
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    - name: Écrire inventory.ini
+      ansible.builtin.template:
+        src: templates/inventory.ini.j2
+        dest: "{{ playbook_dir }}/inventory.ini"
+        mode: "0644"
+
+    - name: Prochaine étape
+      ansible.builtin.debug:
+        msg: "Instance {{ etabli_instance_id }} prête. Lance : ansible etabli -m ping"

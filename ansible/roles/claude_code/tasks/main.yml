@@ -1,0 +1,49 @@
+- name: Installer Claude Code (installeur natif, il se met à jour seul ensuite)
+  ansible.builtin.shell: curl -fsSL https://claude.ai/install.sh | bash
+  args:
+    creates: "{{ etabli_home }}/.local/bin/claude"
+  become_user: "{{ etabli_user }}"
+
+- name: Dossier ~/.claude
+  ansible.builtin.file:
+    path: "{{ etabli_home }}/.claude"
+    state: directory
+    owner: "{{ etabli_user }}"
+    group: "{{ etabli_user }}"
+    mode: "0700"
+
+- name: Permissions de Claude Code
+  ansible.builtin.template:
+    src: settings.json.j2
+    dest: "{{ etabli_home }}/.claude/settings.json"
+    owner: "{{ etabli_user }}"
+    group: "{{ etabli_user }}"
+    mode: "0600"
+
+- name: Claude Code est-il connecté ?
+  ansible.builtin.stat:
+    path: "{{ etabli_home }}/.claude/.credentials.json"
+  register: claude_creds
+
+- name: Rappel, connexion manuelle
+  ansible.builtin.debug:
+    msg: >-
+      Claude Code n'est pas encore connecté. En SSM, en tant qu'ubuntu :
+      cd ~/code && claude, puis /login, accepter la confiance du dossier, quitter.
+      Relance ensuite : ansible-playbook site.yml --tags claude
+  when: not claude_creds.stat.exists
+
+- name: Service Remote Control (tmux)
+  ansible.builtin.template:
+    src: claude-rc.service.j2
+    dest: /etc/systemd/system/claude-rc.service
+    mode: "0644"
+  notify: Recharger systemd
+
+- name: Démarrer Remote Control
+  ansible.builtin.systemd_service:
+    name: claude-rc
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: claude_rc_enabled and claude_creds.stat.exists

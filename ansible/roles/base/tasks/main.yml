@@ -1,0 +1,48 @@
+- name: Paquets de base
+  ansible.builtin.apt:
+    name:
+      - git
+      - tmux
+      - curl
+      - unzip
+      - jq
+      - ripgrep
+      - build-essential
+      - sqlite3
+      - supervisor
+      - unattended-upgrades
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Fuseau horaire
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Fichier de swap
+  ansible.builtin.command: "fallocate -l {{ swap_size }} /swapfile"
+  args:
+    creates: /swapfile
+  register: swapfile
+
+- name: Droits du swap
+  ansible.builtin.file:
+    path: /swapfile
+    mode: "0600"
+
+- name: Activer le swap
+  ansible.builtin.shell: mkswap /swapfile && swapon /swapfile
+  when: swapfile.changed
+
+- name: Swap au démarrage
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+
+- name: Dossier de travail
+  ansible.builtin.file:
+    path: "{{ etabli_code_dir }}"
+    state: directory
+    owner: "{{ etabli_user }}"
+    group: "{{ etabli_user }}"
+    mode: "0755"

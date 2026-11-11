@@ -1,0 +1,9 @@
+- name: Machine Établi (Claude Code headless + Remote Control)
+  hosts: etabli
+  become: true
+  roles:
+    - { role: base, tags: [base] }
+    - { role: github_cli, tags: [gh] }
+    - { role: php, tags: [php] }
+    - { role: claude_code, tags: [claude] }
+    - { role: etabli, tags: [etabli] }

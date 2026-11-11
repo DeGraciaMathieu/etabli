@@ -1,0 +1,8 @@
+# Généré par provision.yml. Connexion SSH tunnelée dans SSM : aucun port entrant.
+[etabli]
+claude-box ansible_host={{ etabli_instance_id }}
+
+[etabli:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file={{ etabli_private_key }}
+ansible_ssh_common_args='-o ProxyCommand="aws ssm start-session --profile {{ aws_profile }} --region {{ aws_region }} --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"'

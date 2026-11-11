@@ -1,0 +1,38 @@
+[group:etabli]
+programs=telegram-poll,queue-claude,queue-default
+
+; Le bot : interroge Telegram en boucle et dispatch les reprises
+[program:telegram-poll]
+command=php {{ etabli_app_dir }}/artisan telegram:poll
+directory={{ etabli_app_dir }}
+user={{ etabli_user }}
+environment=HOME="{{ etabli_home }}",PATH="{{ etabli_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+autostart=true
+autorestart=true
+stopwaitsecs=45
+redirect_stderr=true
+stdout_logfile={{ etabli_app_dir }}/storage/logs/telegram-poll.log
+
+; Les runs claude -p / --resume : longs, un à la fois, jamais rejoués automatiquement
+[program:queue-claude]
+command=php {{ etabli_app_dir }}/artisan queue:work --queue=claude --timeout={{ etabli_claude_timeout }} --tries=1
+directory={{ etabli_app_dir }}
+user={{ etabli_user }}
+environment=HOME="{{ etabli_home }}",PATH="{{ etabli_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+autostart=true
+autorestart=true
+stopwaitsecs={{ etabli_claude_timeout + 60 }}
+redirect_stderr=true
+stdout_logfile={{ etabli_app_dir }}/storage/logs/queue-claude.log
+
+; Tout le reste (notifications, petits jobs)
+[program:queue-default]
+command=php {{ etabli_app_dir }}/artisan queue:work --queue=default --tries=3
+directory={{ etabli_app_dir }}
+user={{ etabli_user }}
+environment=HOME="{{ etabli_home }}",PATH="{{ etabli_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+autostart=true
+autorestart=true
+stopwaitsecs=60
+redirect_stderr=true
+stdout_logfile={{ etabli_app_dir }}/storage/logs/queue-default.log

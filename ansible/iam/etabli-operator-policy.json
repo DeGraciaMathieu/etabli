@@ -1,0 +1,129 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "QuiSuisJe",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity",
+        "iam:ListAccountAliases"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Ec2DansLaRegionUniquement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "ec2:ImportKeyPair",
+        "ec2:DeleteKeyPair",
+        "ec2:CreateSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:RunInstances",
+        "ec2:StartInstances",
+        "ec2:StopInstances",
+        "ec2:RebootInstances",
+        "ec2:TerminateInstances",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:ModifyInstanceMetadataOptions",
+        "ec2:AssociateIamInstanceProfile",
+        "ec2:ReplaceIamInstanceProfileAssociation",
+        "ec2:CreateTags"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": { "aws:RequestedRegion": "eu-north-1" }
+      }
+    },
+    {
+      "Sid": "RoleEtProfilEtabliSeulement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:CreateRole",
+        "iam:UpdateRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:TagRole",
+        "iam:ListRoleTags",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:GetInstanceProfile",
+        "iam:CreateInstanceProfile",
+        "iam:TagInstanceProfile",
+        "iam:AddRoleToInstanceProfile"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/etabli-*",
+        "arn:aws:iam::*:instance-profile/etabli-*"
+      ]
+    },
+    {
+      "Sid": "AttacherUniquementLaPolicySSM",
+      "Effect": "Deny",
+      "Action": "iam:AttachRolePolicy",
+      "Resource": "*",
+      "Condition": {
+        "ArnNotEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        }
+      }
+    },
+    {
+      "Sid": "PasserLeRoleAEc2",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:role/etabli-*",
+      "Condition": {
+        "StringEquals": { "iam:PassedToService": "ec2.amazonaws.com" }
+      }
+    },
+    {
+      "Sid": "AmiUbuntuPublieeParCanonical",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:*::parameter/aws/service/canonical/*"
+    },
+    {
+      "Sid": "EtatDeLAgentSSM",
+      "Effect": "Allow",
+      "Action": "ssm:DescribeInstanceInformation",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SessionsSSMSurLesInstancesEtabli",
+      "Effect": "Allow",
+      "Action": "ssm:StartSession",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "StringEquals": { "ssm:resourceTag/Project": "etabli" }
+      }
+    },
+    {
+      "Sid": "DocumentsDeSession",
+      "Effect": "Allow",
+      "Action": "ssm:StartSession",
+      "Resource": [
+        "arn:aws:ssm:*::document/AWS-StartSSHSession",
+        "arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell"
+      ]
+    },
+    {
+      "Sid": "MesPropresSessions",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:TerminateSession",
+        "ssm:ResumeSession"
+      ],
+      "Resource": [
+        "arn:aws:ssm:*:*:session/${aws:username}-*",
+        "arn:aws:ssm:*:*:session/${aws:userid}-*"
+      ]
+    }
+  ]
+}

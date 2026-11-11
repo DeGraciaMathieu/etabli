@@ -1,0 +1,5 @@
+# Copier vers vault.yml puis chiffrer : ansible-vault encrypt group_vars/all/vault.yml
+vault_github_token: "github_pat_xxx"          # token fine-grained, repos ciblés uniquement
+vault_telegram_bot_token: "123456:ABC-xxx"    # donné par @BotFather
+vault_telegram_user_id: 123456789             # ton id Telegram (seul autorisé à piloter)
+vault_etabli_app_key: "base64:xxx"            # php artisan key:generate --show

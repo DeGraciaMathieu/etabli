@@ -1,0 +1,12 @@
+- name: Recharger supervisor
+  ansible.builtin.shell: supervisorctl reread && supervisorctl update
+
+# Pas de supervisorctl restart sur les queues : ça tuerait un run claude en cours.
+# queue:restart laisse chaque worker finir son job avant de redémarrer.
+- name: Redémarrer Établi
+  ansible.builtin.shell: >-
+    php artisan queue:restart &&
+    supervisorctl restart etabli:telegram-poll
+  args:
+    chdir: "{{ etabli_app_dir }}"
+  become_user: "{{ etabli_user }}"

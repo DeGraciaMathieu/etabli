@@ -1,0 +1,70 @@
+- name: Dossier de l'app
+  ansible.builtin.file:
+    path: "{{ etabli_app_dir }}"
+    state: directory
+    owner: "{{ etabli_user }}"
+    group: "{{ etabli_user }}"
+    mode: "0755"
+
+- name: Code de l'app
+  ansible.builtin.git:
+    repo: "{{ etabli_repo }}"
+    dest: "{{ etabli_app_dir }}"
+    version: "{{ etabli_branch }}"
+  become_user: "{{ etabli_user }}"
+  notify: Redémarrer Établi
+
+- name: Fichier .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ etabli_app_dir }}/.env"
+    owner: "{{ etabli_user }}"
+    group: "{{ etabli_user }}"
+    mode: "0600"
+  notify: Redémarrer Établi
+
+- name: Dépendances Composer
+  community.general.composer:
+    command: install
+    working_dir: "{{ etabli_app_dir }}"
+    no_dev: true
+    optimize_autoloader: true
+  become_user: "{{ etabli_user }}"
+
+- name: Base SQLite
+  ansible.builtin.file:
+    path: "{{ etabli_app_dir }}/database/database.sqlite"
+    state: touch
+    owner: "{{ etabli_user }}"
+    group: "{{ etabli_user }}"
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Migrations
+  ansible.builtin.command: php artisan migrate --force
+  args:
+    chdir: "{{ etabli_app_dir }}"
+  become_user: "{{ etabli_user }}"
+  register: migrate
+  changed_when: "'Nothing to migrate' not in migrate.stdout"
+
+- name: Cache de config
+  ansible.builtin.command: php artisan config:cache
+  args:
+    chdir: "{{ etabli_app_dir }}"
+  become_user: "{{ etabli_user }}"
+  changed_when: false
+
+- name: Process supervisor (bot + queues)
+  ansible.builtin.template:
+    src: supervisor.conf.j2
+    dest: /etc/supervisor/conf.d/etabli.conf
+    mode: "0644"
+  notify: Recharger supervisor
+
+- name: Supervisor actif
+  ansible.builtin.service:
+    name: supervisor
+    state: started
+    enabled: true
