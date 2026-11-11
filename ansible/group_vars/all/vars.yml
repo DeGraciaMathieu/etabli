@@ -16,6 +16,12 @@ etabli_claude_timeout: 3600
 # Le bot Telegram sous supervisor (telegram:poll)
 etabli_telegram_enabled: true
 
+# Arrêt de nuit (heure de timezone) : la machine s'éteint, sauf tâche en cours qu'elle attend.
+# Redémarrage à la main : aws ec2 start-instances --profile etabli --region eu-north-1 --instance-ids <id>
+night_stop_enabled: true
+night_stop_time: "23:00"
+night_stop_retry_minutes: 30
+
 # Remote Control dans tmux, lancé au boot (une fois Claude Code connecté)
 claude_rc_enabled: true
 

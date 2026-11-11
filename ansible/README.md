@@ -92,6 +92,16 @@ L'onboarding, la confiance du dossier `~/code` et la question « Enable Remote C
 
 Le playbook considère Claude connecté si `~/.claude/.credentials.json` existe. Vérifie ce chemin sur ta version de Claude Code.
 
+## Garde-fous de coût
+
+- **Arrêt de nuit** (rôle `night_stop`, `--tags night`) : chaque soir à `night_stop_time` (23:00, heure de Paris), la machine s'éteint et l'instance passe en *stopped*. Si une tâche est `queued` ou `running`, elle réessaie toutes les 30 minutes. Seul le disque reste facturé. Pour la rallumer :
+
+  ```bash
+  aws ec2 start-instances --profile etabli --region eu-north-1 --instance-ids <id dans inventory.ini>
+  ```
+
+- **AWS Budgets** (dans `provision.yml`) : budget mensuel `etabli` de `budget_limit_usd` (30 $) sur le coût total du compte, mail à `budget_email` à 80 % du réel et à 100 % de la prévision.
+
 ## Ensuite
 
 | Besoin | Commande |

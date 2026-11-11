@@ -1,0 +1,8 @@
+[Unit]
+Description=Arrêt de nuit d'Établi, chaque jour à {{ night_stop_time }} ({{ timezone }})
+
+[Timer]
+OnCalendar=*-*-* {{ night_stop_time }}:00
+
+[Install]
+WantedBy=timers.target

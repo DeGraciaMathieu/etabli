@@ -1,0 +1,17 @@
+#!/bin/bash
+# Éteint l'instance pour la nuit. Une instance EBS éteinte passe en « stopped » :
+# plus de coût d'instance, seul le disque reste facturé.
+# Attend d'abord la fin des tâches en cours, pour ne pas couper un run claude.
+DB={{ etabli_app_dir }}/database/database.sqlite
+
+busy() {
+  [ -f "$DB" ] && [ "$(sqlite3 "$DB" "select count(*) from tasks where status in ('queued', 'running')")" != 0 ]
+}
+
+while busy; do
+  echo "Tâche en cours, nouvel essai dans {{ night_stop_retry_minutes }} minutes"
+  sleep {{ night_stop_retry_minutes * 60 }}
+done
+
+echo "Aucune tâche en cours, arrêt de l'instance"
+systemctl poweroff

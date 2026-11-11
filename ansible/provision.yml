@@ -22,6 +22,9 @@
     etabli_private_key: "~/.ssh/etabli"
     # AMI Ubuntu 24.04 ARM la plus récente, publiée par Canonical dans SSM
     ubuntu_ami_param: /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
+    # Alerte AWS Budgets sur le coût total du compte, par mail
+    budget_limit_usd: 30
+    budget_email: toi@example.com
 
   module_defaults:
     group/amazon.aws.aws:
@@ -139,6 +142,39 @@
         src: templates/inventory.ini.j2
         dest: "{{ playbook_dir }}/inventory.ini"
         mode: "0644"
+
+    # Pas de module Ansible pour AWS Budgets : la CLI, avec une lecture d'abord pour rester idempotent
+    - name: Budget existant ?
+      ansible.builtin.command: >-
+        aws budgets describe-budget --profile {{ aws_profile }}
+        --account-id {{ aws_account_id }} --budget-name {{ etabli_name }}
+      register: etabli_budget
+      changed_when: false
+      failed_when: etabli_budget.rc != 0 and 'NotFoundException' not in etabli_budget.stderr
+
+    - name: Budget mensuel, alerte à 80 % du réel et 100 % de la prévision
+      ansible.builtin.command:
+        argv:
+          - aws
+          - budgets
+          - create-budget
+          - --profile={{ aws_profile }}
+          - --account-id={{ aws_account_id }}
+          - --budget={{ budget | to_json }}
+          - --notifications-with-subscribers={{ notifications | to_json }}
+      vars:
+        budget:
+          BudgetName: "{{ etabli_name }}"
+          BudgetLimit: { Amount: "{{ budget_limit_usd }}", Unit: USD }
+          TimeUnit: MONTHLY
+          BudgetType: COST
+        subscribers: [{ SubscriptionType: EMAIL, Address: "{{ budget_email }}" }]
+        notifications:
+          - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 80, ThresholdType: PERCENTAGE }
+            Subscribers: "{{ subscribers }}"
+          - Notification: { NotificationType: FORECASTED, ComparisonOperator: GREATER_THAN, Threshold: 100, ThresholdType: PERCENTAGE }
+            Subscribers: "{{ subscribers }}"
+      when: etabli_budget.rc != 0
 
     - name: Prochaine étape
       ansible.builtin.debug:

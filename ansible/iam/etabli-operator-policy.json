@@ -84,6 +84,15 @@
       }
     },
     {
+      "Sid": "BudgetEtabliSeulement",
+      "Effect": "Allow",
+      "Action": [
+        "budgets:ViewBudget",
+        "budgets:ModifyBudget"
+      ],
+      "Resource": "arn:aws:budgets::*:budget/etabli"
+    },
+    {
       "Sid": "AmiUbuntuPublieeParCanonical",
       "Effect": "Allow",
       "Action": "ssm:GetParameter",

@@ -1,0 +1,22 @@
+- name: Script d'arrêt de nuit
+  ansible.builtin.template:
+    src: etabli-night-stop.sh.j2
+    dest: /usr/local/bin/etabli-night-stop
+    mode: "0755"
+
+- name: Service et timer d'arrêt de nuit
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - etabli-night-stop.service
+    - etabli-night-stop.timer
+  notify: Recharger systemd (arrêt de nuit)
+
+- name: Timer d'arrêt de nuit
+  ansible.builtin.systemd_service:
+    name: etabli-night-stop.timer
+    enabled: "{{ night_stop_enabled }}"
+    state: "{{ 'started' if night_stop_enabled else 'stopped' }}"
+    daemon_reload: true
