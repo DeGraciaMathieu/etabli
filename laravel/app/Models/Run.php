@@ -13,6 +13,7 @@ class Run extends Model
         'cost',
         'turns',
         'log_path',
+        'telegram_message_id',
         'started_at',
         'ended_at',
     ];

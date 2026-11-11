@@ -3,10 +3,15 @@
 
 # Pas de supervisorctl restart sur les queues : ça tuerait un run claude en cours.
 # queue:restart laisse chaque worker finir son job avant de redémarrer.
-- name: Redémarrer Établi
-  ansible.builtin.shell: >-
-    php artisan queue:restart
-    {{ '&& supervisorctl restart etabli:telegram-poll' if etabli_telegram_enabled else '' }}
+- name: Relancer les queues
+  ansible.builtin.command: php artisan queue:restart
   args:
     chdir: "{{ etabli_app_dir }}"
   become_user: "{{ etabli_user }}"
+  listen: Redémarrer Établi
+
+# supervisorctl demande root : le socket de supervisor n'est pas accessible à ubuntu
+- name: Relancer le bot Telegram
+  ansible.builtin.command: supervisorctl restart etabli:telegram-poll
+  when: etabli_telegram_enabled
+  listen: Redémarrer Établi

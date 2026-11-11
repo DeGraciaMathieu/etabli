@@ -3,13 +3,16 @@
 namespace App\Jobs;
 
 use App\Enums\TaskStatus;
+use App\Models\Run;
 use App\Models\Task;
+use App\Services\Telegram;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use Throwable;
 
 class RunClaudeTask implements ShouldQueue
@@ -37,7 +40,7 @@ class RunClaudeTask implements ShouldQueue
         $mcpConfig = $this->writeMcpConfig();
 
         $run = $this->task->runs()->create([
-            'kind' => 'start',
+            'kind' => $this->kind(),
             'started_at' => now(),
         ]);
 
@@ -55,7 +58,28 @@ class RunClaudeTask implements ShouldQueue
             'ended_at' => now(),
         ]);
 
-        $this->task->update(['status' => $this->finalStatus($exitCode, $result)]);
+        $status = $this->finalStatus($exitCode, $result);
+
+        $this->task->update(['status' => $status]);
+
+        if ($status !== TaskStatus::WaitingInput) {
+            $this->notifyResult($run, $status, $exitCode, $result);
+        }
+    }
+
+    protected function kind(): string
+    {
+        return 'start';
+    }
+
+    protected function prompt(): string
+    {
+        return $this->task->prompt;
+    }
+
+    protected function sessionArguments(): array
+    {
+        return ['--session-id', $this->task->session_id];
     }
 
     // Une question sans réponse l'emporte : la tâche attend Mathieu, même si le run s'est mal fini
@@ -73,6 +97,32 @@ class RunClaudeTask implements ShouldQueue
     public function failed(?Throwable $exception): void
     {
         $this->task->update(['status' => TaskStatus::Failed]);
+
+        $this->notify("Tâche #{$this->task->id} en échec : ".($exception?->getMessage() ?? 'erreur inconnue'));
+    }
+
+    // Le résultat final part aussi sur Telegram : y répondre relance la tâche
+    private function notifyResult(Run $run, TaskStatus $status, ?int $exitCode, array $result): void
+    {
+        $header = $status === TaskStatus::Done
+            ? "Tâche #{$this->task->id} terminée."
+            : "Tâche #{$this->task->id} en échec (".($result['subtype'] ?? ($exitCode === null ? 'timeout' : "code {$exitCode}")).').';
+
+        $messageId = $this->notify($header."\n\n".Str::limit($result['result'] ?? '', 3500)."\n\nRéponds à ce message pour relancer la tâche.");
+
+        $run->update(['telegram_message_id' => $messageId]);
+    }
+
+    // Un échec d'envoi ne doit pas faire échouer la tâche
+    private function notify(string $text): ?int
+    {
+        try {
+            return app(Telegram::class)->sendMessage($text);
+        } catch (Throwable $e) {
+            Log::error("Message Telegram non envoyé (task {$this->task->id})", ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     // Un worktree et une branche par tâche, gardés tant que la session peut reprendre
@@ -137,8 +187,8 @@ class RunClaudeTask implements ShouldQueue
     {
         return [
             config('etabli.claude_bin'),
-            '-p', $this->task->prompt,
-            '--session-id', $this->task->session_id,
+            '-p', $this->prompt(),
+            ...$this->sessionArguments(),
             '--output-format', 'stream-json',
             '--verbose',
             // Seul le serveur etabli : sans ça, les connecteurs claude.ai du compte sont chargés

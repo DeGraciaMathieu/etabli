@@ -13,8 +13,8 @@ php_version: "8.3"                                  # PHP fourni par Ubuntu 24.0
 # Durée max d'un run claude (secondes). retry_after de la queue est calé dessus.
 etabli_claude_timeout: 3600
 
-# Le bot Telegram sous supervisor. À passer à true quand telegram:poll existe (phase 3).
-etabli_telegram_enabled: false
+# Le bot Telegram sous supervisor (telegram:poll)
+etabli_telegram_enabled: true
 
 # Remote Control dans tmux, lancé au boot (une fois Claude Code connecté)
 claude_rc_enabled: true
