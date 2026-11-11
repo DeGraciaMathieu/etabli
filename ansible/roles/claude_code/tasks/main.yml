@@ -20,6 +20,27 @@
     group: "{{ etabli_user }}"
     mode: "0600"
 
+# Les réponses aux questions de premier lancement, que Claude Code garde dans ~/.claude.json :
+# onboarding, confiance du dossier de travail, « Enable Remote Control? (y/n) ».
+# Clés non documentées, relevées sur la version 2.1.322.
+- name: Questions de premier lancement de Claude Code
+  ansible.builtin.shell: |
+    set -eo pipefail
+    f="{{ etabli_home }}/.claude.json"
+    [ -f "$f" ] || { echo '{}' > "$f"; chmod 600 "$f"; }
+    new=$(jq --arg dir "{{ etabli_code_dir }}" '
+      .hasCompletedOnboarding = true
+      | .remoteDialogSeen = true
+      | .projects[$dir].hasTrustDialogAccepted = true' "$f")
+    if [ "$new" = "$(jq . "$f")" ]; then echo unchanged; exit 0; fi
+    printf '%s\n' "$new" > "$f"
+    echo changed
+  args:
+    executable: /bin/bash
+  become_user: "{{ etabli_user }}"
+  register: claude_first_run
+  changed_when: claude_first_run.stdout == "changed"
+
 - name: Claude Code est-il connecté ?
   ansible.builtin.stat:
     path: "{{ etabli_home }}/.claude/.credentials.json"
@@ -29,7 +50,7 @@
   ansible.builtin.debug:
     msg: >-
       Claude Code n'est pas encore connecté. En SSM, en tant qu'ubuntu :
-      cd ~/code && claude, puis /login, accepter la confiance du dossier, quitter.
+      cd ~/code && claude, puis /login, quitter.
       Relance ensuite : ansible-playbook site.yml --tags claude
   when: not claude_creds.stat.exists
 

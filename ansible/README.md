@@ -56,13 +56,17 @@ ssh-keygen -t ed25519 -f ~/.ssh/etabli -C "etabli-ec2"
 uv run ansible-playbook provision.yml
 uv run ansible etabli -m ping
 
-# 3. Les secrets
+# 3. Les secrets. Le mot de passe du vault vit dans ~/.config/etabli/vault-pass
+#    (vault_password_file dans ansible.cfg) : aucune commande ne le demande.
+mkdir -p ~/.config/etabli
+read -s -p "Mot de passe du vault : " P && printf '%s' "$P" > ~/.config/etabli/vault-pass && unset P
+chmod 600 ~/.config/etabli/vault-pass
 cp group_vars/all/vault.yml.example group_vars/all/vault.yml
 # remplir les valeurs, puis :
 uv run ansible-vault encrypt group_vars/all/vault.yml
 
 # 4. La machine, sans Établi tant que l'app n'existe pas
-uv run ansible-playbook site.yml --tags base,gh,php,claude --ask-vault-pass
+uv run ansible-playbook site.yml --tags base,gh,php,claude
 ```
 
 `provision.yml` est idempotent : le relancer ne recrée rien. Pour changer de type d'instance, arrête-la, modifie `etabli_instance_type`, relance.
@@ -72,17 +76,19 @@ uv run ansible-playbook site.yml --tags base,gh,php,claude --ask-vault-pass
 La connexion OAuth à ton compte claude.ai ne s'automatise pas (et Remote Control refuse les clés API comme les tokens `setup-token`).
 
 ```bash
-aws ssm start-session --target i-0123456789abcdef0
+aws ssm start-session --profile etabli --region eu-north-1 --target i-0123456789abcdef0
 sudo -iu ubuntu
-cd ~/code && claude     # /login, ouvrir l'URL, coller le code, accepter la confiance du dossier, quitter
+cd ~/code && claude     # /login, ouvrir l'URL, coller le code, quitter
 exit
 ```
 
 Puis :
 
 ```bash
-uv run ansible-playbook site.yml --tags claude --ask-vault-pass   # démarre Remote Control
+uv run ansible-playbook site.yml --tags claude   # démarre Remote Control
 ```
+
+L'onboarding, la confiance du dossier `~/code` et la question « Enable Remote Control? » sont réglés par le rôle `claude_code` dans `~/.claude.json` (clés non documentées, relevées sur Claude Code 2.1.322).
 
 Le playbook considère Claude connecté si `~/.claude/.credentials.json` existe. Vérifie ce chemin sur ta version de Claude Code.
 
