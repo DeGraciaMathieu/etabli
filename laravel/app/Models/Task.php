@@ -41,4 +41,9 @@ class Task extends Model
     {
         return $this->hasMany(Run::class);
     }
+
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class);
+    }
 }

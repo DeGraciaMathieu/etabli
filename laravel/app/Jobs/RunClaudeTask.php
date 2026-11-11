@@ -55,9 +55,19 @@ class RunClaudeTask implements ShouldQueue
             'ended_at' => now(),
         ]);
 
+        $this->task->update(['status' => $this->finalStatus($exitCode, $result)]);
+    }
+
+    // Une question sans réponse l'emporte : la tâche attend Mathieu, même si le run s'est mal fini
+    private function finalStatus(?int $exitCode, array $result): TaskStatus
+    {
+        if ($this->task->questions()->pending()->exists()) {
+            return TaskStatus::WaitingInput;
+        }
+
         $succeeded = $exitCode === 0 && ($result['subtype'] ?? null) === 'success';
 
-        $this->task->update(['status' => $succeeded ? TaskStatus::Done : TaskStatus::Failed]);
+        return $succeeded ? TaskStatus::Done : TaskStatus::Failed;
     }
 
     public function failed(?Throwable $exception): void
@@ -135,6 +145,7 @@ class RunClaudeTask implements ShouldQueue
             '--mcp-config', $mcpConfig,
             '--strict-mcp-config',
             '--allowedTools', implode(',', $this->task->allowed_tools ?? config('etabli.allowed_tools')),
+            '--append-system-prompt', File::get(base_path('prompts/headless.md')),
             '--max-turns', (string) config('etabli.max_turns'),
         ];
     }
