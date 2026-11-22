@@ -12,7 +12,7 @@
     # Le compte AWS utilisé est celui de ce profil (~/.aws/config). Le playbook
     # s'arrête si le profil ne pointe pas vers aws_account_id.
     aws_profile: etabli
-    aws_account_id: "123456789012"
+    aws_account_id: "{{ vault_aws_account_id }}"
     aws_region: eu-north-1
     aws_availability_zone: eu-north-1b       # eu-north-1a manquait de t4g.small
     etabli_name: etabli
@@ -24,7 +24,7 @@
     ubuntu_ami_param: /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
     # Alerte AWS Budgets sur le coût total du compte, par mail
     budget_limit_usd: 30
-    budget_email: toi@example.com
+    budget_email: "{{ vault_budget_email }}"
 
   module_defaults:
     group/amazon.aws.aws:

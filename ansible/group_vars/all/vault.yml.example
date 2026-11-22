@@ -3,3 +3,5 @@ vault_github_token: "github_pat_xxx"          # token fine-grained, repos ciblé
 vault_telegram_bot_token: "123456:ABC-xxx"    # donné par @BotFather
 vault_telegram_user_id: 123456789             # ton id Telegram (seul autorisé à piloter)
 vault_etabli_app_key: "base64:xxx"            # php artisan key:generate --show
+vault_aws_account_id: "123456789012"          # compte AWS attendu derrière le profil etabli
+vault_budget_email: "toi@example.com"         # destinataire des alertes AWS Budgets
