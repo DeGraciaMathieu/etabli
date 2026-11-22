@@ -1,10 +1,41 @@
 # Établi
 
-An EC2 instance that runs Claude Code headless on your repos, driven from Telegram. You start a task with `/tache`, Claude works on its own in a worktree, and when a decision is yours to make it asks you on Telegram. Your answer resumes the session where it stopped.
+Établi aims to become a self-hosted software forge where the code is written by an agent and the decisions stay with you. You describe the work, Claude Code carries it out on its own, and it only comes back to you for what is yours to decide: a design choice, an irreversible action, a permission it does not have.
+
+Today, Établi is an EC2 instance that runs Claude Code headless on your repos, driven from Telegram. You start a task with `/tache`, Claude works on its own in a worktree, and when a decision is yours to make it asks you on Telegram. Your answer resumes the session where it stopped.
 
 ![Établi architecture](docs/architecture.svg)
 
 The machine has no inbound port: the bot polls Telegram with long polling, Claude Code and Remote Control open outbound connections, and your workstation goes through SSH tunneled over SSM.
+
+## Roadmap
+
+Établi is at its first stage: one owner, one instance, one run at a time, driven from Telegram. The steps below lead from there to a forge. They are ordered, not dated.
+
+### 1. Usable by others
+- [ ] Generic naming: `ask_mathieu` becomes `ask_owner`, owner name and GitHub owner come from config
+- [ ] Bot messages, headless prompt and setup guide in English
+- [ ] Tests for the permission rules (`approve`) and the Telegram reply routing
+
+### 2. Ship, not just code
+- [ ] Open a pull request when a task ends, and link it in the Telegram result
+- [ ] A review comment on the PR resumes the session, like a Telegram reply does today
+- [ ] Clean up worktrees and branches once the PR is merged or closed
+
+### 3. See and steer
+- [ ] `/tasks` and `/stop N` commands on Telegram
+- [ ] Cost per task, summed across its runs
+- [ ] A web board: run history, readable logs, pending questions
+
+### 4. Scale
+- [ ] Several runs in parallel
+- [ ] Several owners, each with their own projects and questions
+- [ ] Per-project settings: allowed tools, test command, prompt
+
+### 5. The forge
+- [ ] An orchestrator that splits a large request into tasks, then chains and reviews them
+- [ ] CI as a gate: a task is done only when the tests pass
+- [ ] Other channels on the same core: Slack, GitHub issues
 
 ## Flows
 
