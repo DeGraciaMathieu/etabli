@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Architecture d'Établi</title>
+  <style>
+    .bg { fill: #ffffff; }
+    .box { fill: #ffffff; stroke: #d0d7de; stroke-width: 1; }
+    .box-local { fill: #eaecef; stroke: #d0d7de; stroke-width: 1; }
+    .box-accent { fill: #f6ead3; stroke: #9a6700; stroke-width: 1.5; }
+    .ec2 { fill: none; stroke: #6e7781; stroke-width: 1; stroke-dasharray: 6 4; }
+    .t { fill: #1f2328; font-size: 13px; font-weight: 600; }
+    .s { fill: #59636e; font-size: 11px; }
+    .m { fill: #59636e; font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .l { fill: #59636e; font-size: 10.5px; }
+    .l-accent { fill: #9a6700; font-size: 10.5px; font-weight: 600; }
+    .e { fill: none; stroke: #6e7781; stroke-width: 1.2; }
+    .e-accent { fill: none; stroke: #9a6700; stroke-width: 1.6; }
+    .halo { fill: none; stroke: #ffffff; stroke-width: 6; }
+    .head { fill: #6e7781; }
+    .head-accent { fill: #9a6700; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d1117; }
+      .box { fill: #161b22; stroke: #3d444d; }
+      .box-local { fill: #21262d; stroke: #3d444d; }
+      .box-accent { fill: #2e2412; stroke: #d29922; }
+      .ec2 { stroke: #8b949e; }
+      .t { fill: #e6edf3; }
+      .s, .m, .l { fill: #9198a1; }
+      .l-accent { fill: #d29922; }
+      .e { stroke: #8b949e; }
+      .e-accent { stroke: #d29922; }
+      .halo { stroke: #0d1117; }
+      .head { fill: #8b949e; }
+      .head-accent { fill: #d29922; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="head" d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+    <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="head-accent" d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1024" height="600"/>
+
+  <!-- Poste local -->
+  <rect class="box-local" x="14" y="255" width="172" height="140" rx="8"/>
+  <text class="t" x="28" y="281">Ton poste</text>
+  <text class="s" x="28" y="303">Ansible (uv) · aws CLI</text>
+  <text class="s" x="28" y="320">session-manager-plugin</text>
+  <text class="m" x="28" y="346">provision.yml</text>
+  <text class="m" x="28" y="362">site.yml</text>
+  <text class="m" x="28" y="378">power.yml</text>
+
+  <text class="l" x="212" y="306" text-anchor="middle">SSH</text>
+  <text class="l" x="212" y="318" text-anchor="middle">via SSM</text>
+  <path class="e" d="M186 325 H238" marker-end="url(#a)"/>
+
+  <!-- EC2 -->
+  <rect class="ec2" x="240" y="40" width="482" height="545" rx="12"/>
+  <text class="m" x="258" y="572">EC2 t4g.small · Ubuntu 24.04 ARM · eu-north-1 · aucun port entrant</text>
+
+  <!-- Colonne A -->
+  <rect class="box" x="258" y="120" width="190" height="56" rx="8"/>
+  <text class="t" x="272" y="143">telegram-poll</text>
+  <text class="s" x="272" y="162">supervisor · long polling</text>
+
+  <rect class="box" x="258" y="210" width="190" height="56" rx="8"/>
+  <text class="t" x="272" y="233">SQLite</text>
+  <text class="s" x="272" y="252">tâches · runs · questions · jobs</text>
+
+  <rect class="box" x="258" y="300" width="190" height="56" rx="8"/>
+  <text class="t" x="272" y="323">queue-claude</text>
+  <text class="s" x="272" y="342">supervisor · un run à la fois</text>
+
+  <rect class="box" x="258" y="390" width="190" height="56" rx="8"/>
+  <text class="t" x="272" y="413">queue-default</text>
+  <text class="s" x="272" y="432">supervisor · en réserve</text>
+
+  <rect class="box" x="258" y="480" width="190" height="56" rx="8"/>
+  <text class="t" x="272" y="503">etabli-night-stop</text>
+  <text class="s" x="272" y="522">systemd · 23:00, attend les tâches</text>
+
+  <!-- Colonne B -->
+  <rect class="box-accent" x="524" y="210" width="190" height="56" rx="8"/>
+  <text class="t" x="538" y="233">Serveur MCP etabli</text>
+  <text class="m" x="538" y="252">ask_mathieu · approve</text>
+
+  <rect class="box" x="524" y="300" width="190" height="56" rx="8"/>
+  <text class="t" x="538" y="323">claude -p (headless)</text>
+  <text class="m" x="538" y="342">--session-id · --resume</text>
+
+  <rect class="box" x="524" y="390" width="190" height="56" rx="8"/>
+  <text class="t" x="538" y="413">claude remote-control</text>
+  <text class="s" x="538" y="432">tmux · service claude-rc</text>
+
+  <rect class="box" x="524" y="480" width="190" height="56" rx="8"/>
+  <text class="t" x="538" y="503">~/code</text>
+  <text class="m" x="538" y="522">projets · worktrees/task-N</text>
+
+  <!-- Externes -->
+  <rect class="box-accent" x="770" y="8" width="220" height="52" rx="8"/>
+  <text class="t" x="784" y="29">Ton téléphone</text>
+  <text class="s" x="784" y="47">Telegram · app Claude</text>
+
+  <rect class="box" x="770" y="120" width="220" height="56" rx="8"/>
+  <text class="t" x="784" y="143">Telegram Bot API</text>
+  <text class="s" x="784" y="162">api.telegram.org</text>
+
+  <rect class="box" x="770" y="300" width="220" height="146" rx="8"/>
+  <text class="t" x="784" y="323">API Anthropic</text>
+  <text class="s" x="784" y="342">inférence · Remote Control</text>
+
+  <rect class="box" x="770" y="480" width="220" height="56" rx="8"/>
+  <text class="t" x="784" y="503">GitHub</text>
+  <text class="s" x="784" y="522">gh · token fine-grained</text>
+
+  <!-- telegram-poll ↔ Telegram : long polling sortant -->
+  <path class="e" d="M353 120 V66 H850 V118" marker-end="url(#a)"/>
+  <text class="l" x="600" y="60" text-anchor="middle">getUpdates · long polling 30 s (sortant)</text>
+
+  <!-- queue-claude → Telegram : résultat final -->
+  <path class="e-accent" d="M448 312 H460 V92 H800 V118" marker-end="url(#aa)"/>
+  <text class="l-accent" x="640" y="86" text-anchor="middle">résultat final</text>
+
+  <!-- Téléphone ↔ Telegram -->
+  <path class="e-accent" d="M930 62 V118" marker-start="url(#aa)" marker-end="url(#aa)"/>
+  <text class="l-accent" x="938" y="95">messages</text>
+
+  <!-- Téléphone → Anthropic : app Claude, Remote Control -->
+  <path class="e" d="M990 34 H1006 V330 H992" marker-end="url(#a)"/>
+
+  <!-- telegram-poll → SQLite -->
+  <path class="e" d="M353 176 V208" marker-end="url(#a)"/>
+  <text class="l" x="361" y="197">tâches · réponses</text>
+
+  <!-- SQLite → queue-claude -->
+  <path class="e" d="M353 266 V298" marker-end="url(#a)"/>
+  <text class="l" x="361" y="287">jobs</text>
+
+  <!-- night-stop → SQLite : lit les statuts -->
+  <path class="e" d="M258 508 H250 V238 H256" marker-end="url(#a)"/>
+
+  <!-- MCP → SQLite : questions (pont au-dessus de la ligne du résultat) -->
+  <path class="e" d="M524 238 H450" marker-end="url(#a)"/>
+  <path class="halo" d="M460 246 V230"/>
+  <path class="e-accent" d="M460 250 V226"/>
+  <text class="l" x="492" y="232" text-anchor="middle">questions</text>
+
+  <!-- queue-claude → claude -p -->
+  <path class="e" d="M448 336 H522" marker-end="url(#a)"/>
+  <text class="l" x="486" y="350" text-anchor="middle">lance</text>
+
+  <!-- claude -p → MCP : stdio -->
+  <path class="e-accent" d="M619 300 V268" marker-end="url(#aa)"/>
+  <text class="l-accent" x="627" y="288">stdio</text>
+
+  <!-- MCP → Telegram : sendMessage des questions -->
+  <path class="e-accent" d="M714 230 H742 V160 H768" marker-end="url(#aa)"/>
+  <text class="l-accent" x="750" y="204">questions</text>
+
+  <!-- claude -p → Anthropic -->
+  <path class="e" d="M714 328 H768" marker-end="url(#a)"/>
+  <text class="l" x="746" y="322" text-anchor="middle">HTTPS</text>
+
+  <!-- remote-control → Anthropic -->
+  <path class="e" d="M714 418 H768" marker-end="url(#a)"/>
+  <text class="l" x="746" y="412" text-anchor="middle">sortant</text>
+
+  <!-- claude -p → ~/code : worktree -->
+  <path class="e" d="M524 346 H512 V508 H522" marker-end="url(#a)"/>
+  <text class="l" x="506" y="462" text-anchor="end">worktree</text>
+
+  <!-- ~/code ↔ GitHub -->
+  <path class="e" d="M714 508 H768" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text class="l" x="746" y="502" text-anchor="middle">gh · git</text>
+</svg>
