@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
-  <title>Architecture d'Établi</title>
+  <title>Établi architecture</title>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #ffffff; stroke: #d0d7de; stroke-width: 1; }
@@ -45,7 +45,7 @@
 
   <!-- Poste local -->
   <rect class="box-local" x="14" y="255" width="172" height="140" rx="8"/>
-  <text class="t" x="28" y="281">Ton poste</text>
+  <text class="t" x="28" y="281">Your workstation</text>
   <text class="s" x="28" y="303">Ansible (uv) · aws CLI</text>
   <text class="s" x="28" y="320">session-manager-plugin</text>
   <text class="m" x="28" y="346">provision.yml</text>
@@ -53,12 +53,12 @@
   <text class="m" x="28" y="378">power.yml</text>
 
   <text class="l" x="212" y="306" text-anchor="middle">SSH</text>
-  <text class="l" x="212" y="318" text-anchor="middle">via SSM</text>
+  <text class="l" x="212" y="318" text-anchor="middle">over SSM</text>
   <path class="e" d="M186 325 H238" marker-end="url(#a)"/>
 
   <!-- EC2 -->
   <rect class="ec2" x="240" y="40" width="482" height="545" rx="12"/>
-  <text class="m" x="258" y="572">EC2 t4g.small · Ubuntu 24.04 ARM · eu-north-1 · aucun port entrant</text>
+  <text class="m" x="258" y="572">EC2 t4g.small · Ubuntu 24.04 ARM · eu-north-1 · no inbound port</text>
 
   <!-- Colonne A -->
   <rect class="box" x="258" y="120" width="190" height="56" rx="8"/>
@@ -67,23 +67,23 @@
 
   <rect class="box" x="258" y="210" width="190" height="56" rx="8"/>
   <text class="t" x="272" y="233">SQLite</text>
-  <text class="s" x="272" y="252">tâches · runs · questions · jobs</text>
+  <text class="s" x="272" y="252">tasks · runs · questions · jobs</text>
 
   <rect class="box" x="258" y="300" width="190" height="56" rx="8"/>
   <text class="t" x="272" y="323">queue-claude</text>
-  <text class="s" x="272" y="342">supervisor · un run à la fois</text>
+  <text class="s" x="272" y="342">supervisor · one run at a time</text>
 
   <rect class="box" x="258" y="390" width="190" height="56" rx="8"/>
   <text class="t" x="272" y="413">queue-default</text>
-  <text class="s" x="272" y="432">supervisor · en réserve</text>
+  <text class="s" x="272" y="432">supervisor · unused for now</text>
 
   <rect class="box" x="258" y="480" width="190" height="56" rx="8"/>
   <text class="t" x="272" y="503">etabli-night-stop</text>
-  <text class="s" x="272" y="522">systemd · 23:00, attend les tâches</text>
+  <text class="s" x="272" y="522">systemd · 23:00, waits for tasks</text>
 
   <!-- Colonne B -->
   <rect class="box-accent" x="524" y="210" width="190" height="56" rx="8"/>
-  <text class="t" x="538" y="233">Serveur MCP etabli</text>
+  <text class="t" x="538" y="233">etabli MCP server</text>
   <text class="m" x="538" y="252">ask_mathieu · approve</text>
 
   <rect class="box" x="524" y="300" width="190" height="56" rx="8"/>
@@ -96,32 +96,32 @@
 
   <rect class="box" x="524" y="480" width="190" height="56" rx="8"/>
   <text class="t" x="538" y="503">~/code</text>
-  <text class="m" x="538" y="522">projets · worktrees/task-N</text>
+  <text class="m" x="538" y="522">repos · worktrees/task-N</text>
 
   <!-- Externes -->
   <rect class="box-accent" x="770" y="8" width="220" height="52" rx="8"/>
-  <text class="t" x="784" y="29">Ton téléphone</text>
-  <text class="s" x="784" y="47">Telegram · app Claude</text>
+  <text class="t" x="784" y="29">Your phone</text>
+  <text class="s" x="784" y="47">Telegram · Claude app</text>
 
   <rect class="box" x="770" y="120" width="220" height="56" rx="8"/>
   <text class="t" x="784" y="143">Telegram Bot API</text>
   <text class="s" x="784" y="162">api.telegram.org</text>
 
   <rect class="box" x="770" y="300" width="220" height="146" rx="8"/>
-  <text class="t" x="784" y="323">API Anthropic</text>
-  <text class="s" x="784" y="342">inférence · Remote Control</text>
+  <text class="t" x="784" y="323">Anthropic API</text>
+  <text class="s" x="784" y="342">inference · Remote Control</text>
 
   <rect class="box" x="770" y="480" width="220" height="56" rx="8"/>
   <text class="t" x="784" y="503">GitHub</text>
-  <text class="s" x="784" y="522">gh · token fine-grained</text>
+  <text class="s" x="784" y="522">gh · fine-grained token</text>
 
   <!-- telegram-poll ↔ Telegram : long polling sortant -->
   <path class="e" d="M353 120 V66 H850 V118" marker-end="url(#a)"/>
-  <text class="l" x="600" y="60" text-anchor="middle">getUpdates · long polling 30 s (sortant)</text>
+  <text class="l" x="600" y="60" text-anchor="middle">getUpdates · long polling 30 s (outbound)</text>
 
   <!-- queue-claude → Telegram : résultat final -->
   <path class="e-accent" d="M448 312 H460 V92 H800 V118" marker-end="url(#aa)"/>
-  <text class="l-accent" x="640" y="86" text-anchor="middle">résultat final</text>
+  <text class="l-accent" x="640" y="86" text-anchor="middle">final result</text>
 
   <!-- Téléphone ↔ Telegram -->
   <path class="e-accent" d="M930 62 V118" marker-start="url(#aa)" marker-end="url(#aa)"/>
@@ -132,7 +132,7 @@
 
   <!-- telegram-poll → SQLite -->
   <path class="e" d="M353 176 V208" marker-end="url(#a)"/>
-  <text class="l" x="361" y="197">tâches · réponses</text>
+  <text class="l" x="361" y="197">tasks · answers</text>
 
   <!-- SQLite → queue-claude -->
   <path class="e" d="M353 266 V298" marker-end="url(#a)"/>
@@ -149,7 +149,7 @@
 
   <!-- queue-claude → claude -p -->
   <path class="e" d="M448 336 H522" marker-end="url(#a)"/>
-  <text class="l" x="486" y="350" text-anchor="middle">lance</text>
+  <text class="l" x="486" y="350" text-anchor="middle">starts</text>
 
   <!-- claude -p → MCP : stdio -->
   <path class="e-accent" d="M619 300 V268" marker-end="url(#aa)"/>
@@ -165,7 +165,7 @@
 
   <!-- remote-control → Anthropic -->
   <path class="e" d="M714 418 H768" marker-end="url(#a)"/>
-  <text class="l" x="746" y="412" text-anchor="middle">sortant</text>
+  <text class="l" x="767" y="412" text-anchor="end" style="font-size: 9.5px">outbound</text>
 
   <!-- claude -p → ~/code : worktree -->
   <path class="e" d="M524 346 H512 V508 H522" marker-end="url(#a)"/>

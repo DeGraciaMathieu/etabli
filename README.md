@@ -1,66 +1,66 @@
 # Établi
 
-Une EC2 qui fait tourner Claude Code en headless sur tes repos, pilotée depuis Telegram. Tu lances une tâche avec `/tache`, Claude travaille seul dans un worktree, et quand une décision t'appartient il te pose la question sur Telegram. Ta réponse relance la session là où elle s'était arrêtée.
+An EC2 instance that runs Claude Code headless on your repos, driven from Telegram. You start a task with `/tache`, Claude works on its own in a worktree, and when a decision is yours to make it asks you on Telegram. Your answer resumes the session where it stopped.
 
-![Architecture d'Établi](docs/architecture.svg)
+![Établi architecture](docs/architecture.svg)
 
-La machine n'a aucun port entrant : le bot interroge Telegram en long polling, Claude Code et Remote Control ouvrent des connexions sortantes, et ton poste passe par un SSH tunnelé dans SSM.
+The machine has no inbound port: the bot polls Telegram with long polling, Claude Code and Remote Control open outbound connections, and your workstation goes through SSH tunneled over SSM.
 
-## Les flux
+## Flows
 
-### Lancer une tâche
+### Starting a task
 
-`/tache <projet> <consigne>` envoyé au bot :
+`/tache <project> <instructions>` sent to the bot:
 
-1. `telegram-poll` reçoit le message. Seul l'id Telegram de `TELEGRAM_USER_ID` est écouté.
-2. Le projet est cherché dans `~/code`. S'il n'y est pas, il est cloné avec `gh repo clone` (nom seul ou `owner/nom`). S'il n'existe pas non plus sur GitHub, le bot propose de créer un projet local vide, avec deux boutons, pour qu'une faute de frappe ne crée rien.
-3. La tâche est enregistrée dans SQLite et un job `RunClaudeTask` part sur la queue `claude`.
+1. `telegram-poll` receives the message. Only the Telegram id in `TELEGRAM_USER_ID` is listened to.
+2. The project is looked up in `~/code`. If it is not there, it is cloned with `gh repo clone` (bare name or `owner/name`). If it does not exist on GitHub either, the bot offers to create an empty local project, with two buttons, so that a typo creates nothing.
+3. The task is stored in SQLite and a `RunClaudeTask` job goes onto the `claude` queue.
 
-### Un run
+### A run
 
-`queue-claude` dépile les runs un par un, sans jamais rejouer un run qui a échoué :
+`queue-claude` processes runs one at a time, and never retries a failed run:
 
-1. Un worktree `~/code/worktrees/task-N`, sur la branche `etabli/task-N`, est créé s'il n'existe pas. Il est gardé tant que la session peut reprendre.
-2. `claude -p` démarre dans ce worktree avec `--session-id`, les `allowedTools` de la tâche, le serveur MCP `etabli` seul (`--strict-mcp-config`) et le prompt `laravel/prompts/headless.md`.
-3. Le stream JSON est écrit dans `storage/logs/runs/<run>.jsonl`. Son dernier événement donne le coût et le nombre de tours du run.
-4. Le statut final se décide ainsi : une question restée sans réponse l'emporte, sinon la tâche est `done` ou `failed`.
+1. A worktree `~/code/worktrees/task-N`, on branch `etabli/task-N`, is created if it does not exist. It is kept as long as the session can be resumed.
+2. `claude -p` starts in that worktree with `--session-id`, the task's `allowedTools`, the `etabli` MCP server only (`--strict-mcp-config`) and the prompt `laravel/prompts/headless.md`.
+3. The JSON stream is written to `storage/logs/runs/<run>.jsonl`. Its last event gives the run's cost and number of turns.
+4. The final status is decided as follows: an unanswered question wins, otherwise the task is `done` or `failed`.
 
-### Une question : `ask_mathieu`
+### A question: `ask_mathieu`
 
-Quand une décision t'appartient (choix de design, action irréversible, vraie ambiguïté), Claude appelle l'outil MCP `ask_mathieu` avec la question et deux à quatre options :
+When a decision is yours (design choice, irreversible action, real ambiguity), Claude calls the `ask_mathieu` MCP tool with the question and two to four options:
 
-1. Le serveur MCP, lancé par `claude -p` en stdio, enregistre la question et l'envoie aussitôt sur Telegram. L'envoi est synchrone : passé par la queue, il attendrait derrière le run en cours.
-2. Claude reçoit la consigne de s'arrêter, le run se termine et la tâche passe en `waiting_input`.
-3. Tu réponds avec un bouton, en répondant au message de la question, ou en texte libre si une seule question attend.
-4. `ResumeClaudeTask` relance la session avec `--resume`, dans le même worktree, avec ta réponse comme prompt.
+1. The MCP server, started by `claude -p` over stdio, stores the question and sends it to Telegram right away. Sending is synchronous: through the queue, it would wait behind the current run.
+2. Claude is told to stop, the run ends and the task moves to `waiting_input`.
+3. You answer with a button, by replying to the question's message, or with free text if only one question is pending.
+4. `ResumeClaudeTask` resumes the session with `--resume`, in the same worktree, with your answer as the prompt.
 
-### Une permission : `approve`
+### A permission: `approve`
 
-Un outil hors des `allowedTools` passe par `--permission-prompt-tool mcp__etabli__approve` :
+A tool outside the `allowedTools` goes through `--permission-prompt-tool mcp__etabli__approve`:
 
-- La lecture seule est autorisée d'office : `Glob`, `Grep`, et `ls`, `cat`, `grep`… sans opérateur shell (`find` seulement sans `-exec` ni `-delete`).
-- Le reste devient une question **Autoriser / Refuser** sur Telegram. L'outil est refusé pour ce run, Claude s'arrête, et la tâche passe en `waiting_permission`.
-- **Autoriser** ajoute la règle exacte (par exemple `Bash(make test)`) aux `allowedTools` de la tâche, puis la relance. Tout autre texte vaut refus, et ce texte est transmis à Claude comme précision.
+- Read-only use is allowed automatically: `Glob`, `Grep`, and `ls`, `cat`, `grep`… without shell operators (`find` only without `-exec` or `-delete`).
+- Everything else becomes an **Autoriser / Refuser** (allow / deny) question on Telegram. The tool is denied for this run, Claude stops, and the task moves to `waiting_permission`.
+- **Autoriser** adds the exact rule (for example `Bash(make test)`) to the task's `allowedTools`, then resumes it. Any other text counts as a denial, and that text is passed on to Claude as an explanation.
 
-### La fin d'une tâche
+### End of a task
 
-Le résultat part sur Telegram, que la tâche soit `done` ou `failed`. Répondre à ce message relance la session avec ta réponse : c'est comme ça qu'on demande une correction ou la suite.
+The result is sent to Telegram, whether the task is `done` or `failed`. Replying to that message resumes the session with your reply: that is how you ask for a fix or for what comes next.
 
 ```
 queued → running → done | failed
             ↓
-  waiting_input | waiting_permission → (ta réponse) → queued → running …
+  waiting_input | waiting_permission → (your answer) → queued → running …
 ```
 
 ### Remote Control
 
-À côté des tâches, `claude remote-control` tourne dans tmux (service `claude-rc`) pour ouvrir une session interactive sur la machine depuis l'app Claude. Elle est indépendante des tâches et de Telegram.
+Alongside tasks, `claude remote-control` runs in tmux (service `claude-rc`) to open an interactive session on the machine from the Claude app. It is independent of tasks and of Telegram.
 
-### Allumer, éteindre, déployer
+### Power and deployment
 
-Tout passe par Ansible depuis ton poste : `provision.yml` crée l'infra AWS, `site.yml` configure la machine et déploie l'app, `power.yml` allume ou éteint l'instance. Chaque soir à 23:00, `etabli-night-stop` éteint la machine, en attendant d'abord qu'aucune tâche ne soit `queued` ou `running`.
+Everything goes through Ansible from your workstation: `provision.yml` creates the AWS infrastructure, `site.yml` configures the machine and deploys the app, `power.yml` starts or stops the instance. Every night at 23:00, `etabli-night-stop` shuts the machine down, after first waiting until no task is `queued` or `running`.
 
-## Le repo
+## The repo
 
-- `ansible/` : l'infra et la configuration de l'EC2. L'installation pas à pas est dans [ansible/README.md](ansible/README.md).
-- `laravel/` : l'app. Le bot (`TelegramPoll`, `TelegramUpdateHandler`), les jobs (`RunClaudeTask`, `ResumeClaudeTask`) et le serveur MCP (`app/Mcp`).
+- `ansible/`: the EC2 infrastructure and configuration. Step-by-step setup is in [ansible/README.md](ansible/README.md) (in French).
+- `laravel/`: the app. The bot (`TelegramPoll`, `TelegramUpdateHandler`), the jobs (`RunClaudeTask`, `ResumeClaudeTask`) and the MCP server (`app/Mcp`).
